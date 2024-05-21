@@ -1,0 +1,32 @@
+# IDE
+.idea
+.vscode
+
+# Byte-compiled / optimized / DLL files
+core/__pycache__/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# pyenv
+.python-version
+
+# session
+*.session
+
+# Logging
+*.log
+logs/
+
+# alembic
+alembic/
+

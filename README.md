@@ -73,6 +73,26 @@ DB_URI=postgresql+asyncpg://you_username:you_password@10.0.0.7/you_database_name
 API_ID=12345678
 API_HASH=9999aa9aa9a9999a99a999aa9a599a99
 BOT_TOKEN=1234567890:AAAzz2z2zzzPzPPz1zVCz0zzfXz_Kzz1234
+BOT2_TOKEN=7193774287:AAG5PQuCD-MsN5A4ZUx4BXG1PznRzwtxYnI
+PHONE_NUMBER='+79138552500'
+BOT_ACCOUNT_NAME='@KrivolapDmitriyBot'
+BOT2_ACCOUNT_NAME='@SircleBot'
+USER_ACCOUNT_NAME='@dk06789'
+
+PATH_TO_DOWNLOADS='downloads/'
+
+TYPE=service_account
+PROJECT_ID=apibot12345
+PRIVATE_KEY_ID=943372222222222222222222f08bbb99eb
+PRIVATE_KEY=-----BEGIN PRIVATE KEY----------END PRIVATE KEY-----\n
+CLIENT_EMAIL=apibot@apibot-423555.example.gserviceaccount.com
+CLIENT_ID=107570927280848019372
+AUTH_URI=https://accounts.google.com/o/oauth2/auth
+TOKEN_URI=https://oauth2.googleapis.com/token
+AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+CLIENT_X509_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/apibot%40apibot-423905.iam.gserviceaccount.com
+UNIVERSE_DOMAIN=googleapis.com
+EMAIL=examle@gmail.com
 ```
 
 Где DB_URI - с параметрами подлкючения вашего сервера

@@ -1,4 +1,4 @@
-# telestat_bot_team_3
+# telestat_bot
 
 ## Технологии и библиотеки
 

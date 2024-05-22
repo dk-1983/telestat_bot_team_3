@@ -422,5 +422,5 @@ async def all_incomming_messages(
 
 
 if __name__ == '__main__':
-    logger.info(' Бот запущен')
+    logger.info('Bot 1 is started.')
     bot_1.run()

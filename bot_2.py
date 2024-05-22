@@ -203,6 +203,7 @@ async def all_incomming_messages(
             )
         )
         manager.choise_report_flag = False
+
     elif message.text == 'CSV':
         if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
             logger.info('Готовим ваш CSV файл для отправки в Телеграм.')

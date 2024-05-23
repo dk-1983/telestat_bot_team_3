@@ -1,18 +1,17 @@
-from enum import Enum
-import re
 import os
-from pyrogram import Client, filters
-from pyrogram.types import messages_and_media, ReplyKeyboardRemove
+import re
+from enum import Enum
 
-from settings import configure_logging
-from buttons import bot_keys
-from logic import (
-    add_admin, del_admin, auto_report, generate_report, scheduling, get_channel_report
-)
-from permissions.permissions import check_authorization
+from pyrogram import Client, filters
+from pyrogram.types import ReplyKeyboardRemove, messages_and_media
+
 from assistants.assistants import dinamic_keyboard
-from settings import Config
-from services.google_api_service import get_report, get_one_spreadsheet
+from buttons import bot_keys
+from logic import (add_admin, auto_report, del_admin, generate_report,
+                   get_channel_report, scheduling)
+from permissions.permissions import check_authorization
+from services.google_api_service import get_one_spreadsheet, get_report
+from settings import Config, configure_logging
 
 
 class Commands(Enum):
@@ -232,6 +231,7 @@ async def all_incomming_messages(
                             message.chat.id,
                             f'{Config.PATH_TO_DOWNLOADS}{report.group}.csv'
                             )
+                        break
                     else:
                         logger.error(f'При скачивании файла: {report.group}.'
                                      'CSV с Google Drive чтото пошло не так!')
@@ -263,6 +263,7 @@ async def all_incomming_messages(
                             message.chat.id,
                             f'{Config.PATH_TO_DOWNLOADS}{report.group}.xlsx'
                             )
+                        break
                     else:
                         logger.error(f'При скачивании файла: {report.group}.'
                                      'xlsx с Google Drive чтото пошло не так!')

@@ -9,15 +9,14 @@ from sqlalchemy.exc import IntegrityError
 
 from assistants.assistants import dinamic_keyboard
 from buttons import bot_keys
-from services.google_api_service import get_report, get_data_for_shedule
-from services.sheduling import build_shedule
-from services.telegram_service import (ChatUserInfo, add_users, get_channels,
-                                       update_users, set_settings_for_report,)
-from settings import Config, configure_logging
+from core.db import engine
 from crud.channel_settings import channel_settings_crud
 from crud.report import report_crud
-from core.db import engine
-
+from services.google_api_service import get_data_for_shedule, get_report
+from services.sheduling import build_shedule
+from services.telegram_service import (ChatUserInfo, add_users, get_channels,
+                                       set_settings_for_report, update_users)
+from settings import Config, configure_logging
 
 logger = configure_logging()
 

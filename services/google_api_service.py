@@ -1,8 +1,8 @@
 import csv
 from datetime import datetime
 from io import BytesIO
-import pandas as pd
 
+import pandas as pd
 from aiogoogle import Aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
 from openpyxl import load_workbook
@@ -289,17 +289,16 @@ async def get_one_spreadsheet(
 
     async with Aiogoogle(service_account_creds=cred) as aiogoogle:
         service = await aiogoogle.discover('drive', DRIVE_VER)
-        file = (await aiogoogle.as_service_account(
+        file = await aiogoogle.as_service_account(
             service.files.export(
                 fileId=spreadsheetId,
                 mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 ),
-        ))
+        )
         xlsx = load_workbook(filename=BytesIO(file))
         xlsx.save(f'{path}.xlsx')
         if format == 'CSV':
             df = pd.DataFrame(pd.read_excel(f'{path}.xlsx'))
-            print(df)
             df.to_csv(f'{path}.csv')
         return file
 

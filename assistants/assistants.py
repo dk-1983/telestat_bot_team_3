@@ -1,13 +1,10 @@
-import datetime
 from functools import wraps
-from asyncio
 
 from pyrogram import Client
 from pyrogram.errors.exceptions.bad_request_400 import ReplyMarkupInvalid
 from pyrogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 from crud.userstg import userstg_crud
-from logic import get_run_status
 from settings import Config, logger
 
 user_bot = Client(
@@ -38,27 +35,6 @@ async def check_by_attr(attr_name, attr_value, session) -> bool:
             ) is None:
         return False
     return True
-
-
-async def custom_sleep(
-        channel,
-        period,
-        crud_name
-        ):
-    """
-    Вручную меняет время паузы в случае ошибки пользователя при вводе данных
-    периода между опросами иначе бот может на месяцы уйти в сон.
-    """
-    time_next = datetime.datetime.now() + datetime.timedelta(seconds=period)
-    while (time_next > datetime.datetime.now()):
-        channel = await get_run_status(
-            channel,
-            crud_name=crud_name
-            )
-        if channel.run is not None or channel.run:
-            await sleep(60)
-        else:
-            return
 
 
 def dinamic_keyboard(objs, attr_name, keyboard_row=2):
@@ -114,6 +90,7 @@ def dinamic_keyboard(objs, attr_name, keyboard_row=2):
 
 
 def get_user_session(func):
+    """Пользовательская сессия от имени человека."""
     @wraps(func)
     async def wrapper(*args, **kwargs):
         await user_bot.start()

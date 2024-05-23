@@ -1,15 +1,13 @@
 import datetime
-import os
 import re
-from asyncio import sleep
 from enum import Enum
 
 from pyrogram import Client, filters
 from pyrogram.types import ReplyKeyboardRemove, messages_and_media
 from sqlalchemy.exc import IntegrityError
 
-from assistants.assistants import (DotNotationDict, custom_sleep,
-                                   dinamic_keyboard)
+from assistants.assistants import DotNotationDict, dinamic_keyboard
+from assistants.custom_sleep import custom_sleep
 from buttons import bot_keys
 from crud.channel_settings import channel_settings_crud
 from crud.report_settings import report_settings_crud

@@ -53,6 +53,9 @@ bot_keyboard = [
         'key_name': 'xlsx'
     },
     {
+        'key_name': 'Изменить период сбора аналитики'
+    },
+    {
         'key_name': "it's comming..."
     },
 ]

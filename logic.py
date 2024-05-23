@@ -268,6 +268,7 @@ async def generate_report(client, message, manager):
                     f'Файл {report.group}.{manager.format} успешно отправлен '
                     'в Телеграм.'
                     )
+                os.remove(f'{Config.PATH_TO_DOWNLOADS}{report.group}.{manager.format}')
                 break
             else:
                 logger.error(
@@ -298,21 +299,17 @@ async def scheduling(client, message, spreadsheetId):
 
 async def get_channels_settings_from_db(crud_name):
     async with engine.connect() as session:
-        channel_btns = []
-        for channel in await crud_name.get_all(session):
-            channel_btns.append(channel.channel_name)
-        return channel_btns
+        return await crud_name.get_all(session)
 
 
-async def get_run_status(channel):
+async def get_run_status(channel, crud_name):
     async with engine.connect() as session:
-        obj_channel = await channel_settings_crud.get_by_attr(
+        obj_channel = await crud_name.get_by_attr(
             attr_name='channel_name',
             attr_value=channel,
             session=session
         )
-        if obj_channel:
-            return obj_channel.run
+        return obj_channel
 
 
 async def set_channel_data(channel, period=None):

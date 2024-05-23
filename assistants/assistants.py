@@ -37,6 +37,23 @@ async def check_by_attr(attr_name, attr_value, session) -> bool:
     return True
 
 
+async def custom_sleep(channel, period):
+    """
+    Вручную меняет время паузы в случае ошибки пользователя при вводе данных
+    периода между опросами иначе бот может на месяцы уйти в сон.
+    """
+    time_next = datetime.datetime.now() + datetime.timedelta(seconds=period)
+    while (time_next > datetime.datetime.now()):
+        channel = await get_run_status(
+            channel,
+            crud_name=channel_settings_crud
+            )
+        if channel.run is not None or channel.run:
+            await sleep(60)
+        else:
+            return
+
+
 def dinamic_keyboard(objs, attr_name, keyboard_row=2):
     """
     Динамическая клавиатура для вывода в телеграм.

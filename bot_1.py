@@ -9,7 +9,8 @@ from pyrogram.errors.exceptions.bad_request_400 import (UsernameNotOccupied,
 from pyrogram.types import ReplyKeyboardRemove, messages_and_media
 from sqlalchemy.exc import IntegrityError
 
-from assistants.assistants import DotNotationDict, dinamic_keyboard
+from assistants.assistants import (DotNotationDict, custom_sleep,
+                                   dinamic_keyboard)
 from buttons import bot_keys
 from crud.channel_settings import channel_settings_crud
 from crud.report_settings import report_settings_crud
@@ -25,17 +26,6 @@ from settings import Config, configure_logging
 logger = configure_logging()
 
 
-async def custom_sleep(channel, period):
-    time_now = datetime.datetime.now()
-    time_next = datetime.datetime.now() + datetime.timedelta(seconds=period)
-    while time_next > time_now:
-        run_status = await get_run_status(channel)
-        if run_status:
-            await sleep(60)
-        else:
-            return
-
-
 class Commands(Enum):
     add_admin = 'Добавить администратора'
     del_admin = 'Удалить администратора'
@@ -44,6 +34,7 @@ class Commands(Enum):
     run_collect_analitics = 'Начать сбор аналитики'
     user_period = 'Свой вариант'
     stop_channel = 'Остановить сбор аналитики'
+    set_new_period = 'Изменить период сбора аналитики'
 
 
 class BotManager:
@@ -52,7 +43,9 @@ class BotManager:
     del_admin_flag = False
     choise_channel_flag = False
     set_period_flag = False
-    stop_channel_flag = True
+    stop_channel_flag = False
+    set_new_period_flag = False
+    set_channel_for_new_period = False
     owner_or_admin = ''
     chanel = ''
     period = 120
@@ -84,7 +77,7 @@ async def command_start(
             message.chat.id,
             f'{message.chat.username} вы авторизованы как владелец!',
             reply_markup=dinamic_keyboard(
-                objs=bot_keys[:3] + bot_keys[14:15],
+                objs=bot_keys[:3] + bot_keys[14:15] + bot_keys[17:18],
                 attr_name='key_name',
                 keyboard_row=2
             )
@@ -96,7 +89,7 @@ async def command_start(
             message.chat.id,
             f'{message.chat.username} вы авторизованы как администратор бота!',
             reply_markup=dinamic_keyboard(
-                objs=bot_keys[2:3] + bot_keys[14:15],
+                objs=bot_keys[2:3] + bot_keys[14:15] + bot_keys[17:18],
                 attr_name='key_name',
                 keyboard_row=2
             )
@@ -220,11 +213,16 @@ async def generate_report(
                     'crud_name': channel_settings_crud
                 })
         if db is not None or db:
-            # await custom_sleep(channel_name, period)
-            await sleep(period)
+            await custom_sleep(db.channel_name, db.period)
+            # await sleep(period)
             if (not db.run or db.work_period <= datetime.datetime.now()):
                 logger.info(f'Удаляем запись о канале: {db.channel_name} '
-                            'в базе данных, Бот закончил свою работу.')
+                            'в базе данных, Бот 1 закончил свою работу.')
+                await client.send_message(
+                        message.chat.id,
+                        'Бот 1 закончил сбор аналитики на канале '
+                        f'{db.channel_name} в {datetime.datetime.now()}!'
+                    )
                 await delete_settings_report(
                     'id',
                     db.id,
@@ -275,6 +273,23 @@ async def set_period_cmd(
             )
         )
         manager.set_period_flag = True
+
+
+@bot_1.on_message(filters.regex(Commands.set_new_period.value))
+async def command_set_new_period(
+    client: Client,
+    message: messages_and_media.message.Message,
+    manager=manager
+):
+    """Изменение периода сбора данных в процессе работы бота."""
+
+    await client.send_message(
+        message.chat.id,
+        'Установите новый период в часах, введите новое значение в '
+        'текстовое поле:',
+        reply_markup=ReplyKeyboardRemove()
+    )
+    manager.set_new_period_flag = True
 
 
 @bot_1.on_message(filters.regex(Commands.user_period.value))
@@ -409,6 +424,56 @@ async def all_incomming_messages(
         manager.period = int(period) * 3600
         manager.set_period_flag = False
         logger.info(f'Выбран период опроса {manager.period}')
+
+    elif manager.set_new_period_flag:
+        if not manager.set_channel_for_new_period:
+            logger.info('Устанавливаем новое кастомное время сбора аналитики.')
+            period = re.search('\d{,3}', message.text).group()
+            if not period:
+                await client.send_message(
+                    message.chat.id,
+                    'Проверьте правильность периода, должно быть целое число!\n'
+                    'Укажите произвольное время в часах:',
+                    reply_markup=ReplyKeyboardRemove()
+                )
+                return
+            manager.period = int(period)  # * 3600
+            logger.info(f'Выбран период опроса {manager.period}')
+            channels = await get_channels_settings_from_db(
+                crud_name=channel_settings_crud
+            )
+            if channels is None or not channels:
+                await client.send_message(
+                    message.chat.id,
+                    'Вероятно бот не запущен, данная операция недоступна.'
+                )
+            else:
+                print(channels)
+                await client.send_message(
+                    message.chat.id,
+                    'Требуется выбрать канал для изменения временных критериев:',
+                    reply_markup=dinamic_keyboard(
+                        objs=channels,
+                        attr_name='channel_name',
+                        keyboard_row=4
+                    )
+                )
+                manager.set_channel_for_new_period = True
+        else:
+            await set_channel_data(
+                channel=message.text,
+                period=manager.period
+            )
+
+            await client.send_message(
+                    message.chat.id,
+                    'Установлен новый период выборки данных из канала '
+                    f'{message.text} успешно, новый период составляет: '
+                    f'{manager.period} часов, для продолжения нажмите старт: '
+                    '/start',
+                    reply_markup=ReplyKeyboardRemove()
+                    )
+            manager.set_new_period_flag = False
 
     elif manager.stop_channel_flag:
         channel = message.text

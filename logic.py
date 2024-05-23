@@ -262,6 +262,10 @@ async def generate_report(client, message, manager):
                     message.chat.id,
                     f'{Config.PATH_TO_DOWNLOADS}{report.group}.{message.text}'
                     )
+                logger.info(
+                    f'Файл {report.group}.{message.text} успешно отправлен '
+                    'в Телеграм.'
+                    )
                 break
             else:
                 logger.error(

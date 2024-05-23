@@ -1,5 +1,6 @@
 import datetime
 from functools import wraps
+from asyncio
 
 from pyrogram import Client
 from pyrogram.errors.exceptions.bad_request_400 import ReplyMarkupInvalid
@@ -39,7 +40,11 @@ async def check_by_attr(attr_name, attr_value, session) -> bool:
     return True
 
 
-async def custom_sleep(channel, period, crud_name):
+async def custom_sleep(
+        channel,
+        period,
+        crud_name
+        ):
     """
     Вручную меняет время паузы в случае ошибки пользователя при вводе данных
     периода между опросами иначе бот может на месяцы уйти в сон.

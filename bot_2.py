@@ -209,8 +209,7 @@ async def all_incomming_messages(
             await generate_report(
                 client,
                 message,
-                manager=manager,
-                tag=message.text
+                manager=manager
                 )
 
     elif message.text == 'xlsx':
@@ -219,8 +218,7 @@ async def all_incomming_messages(
             await generate_report(
                 client,
                 message,
-                manager=manager,
-                tag=message.text
+                manager=manager
                 )
 
     elif manager.choise_auto_report_flag:

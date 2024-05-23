@@ -13,6 +13,7 @@ from buttons import bot_keys
 from core.db import engine
 from crud.channel_settings import channel_settings_crud
 from crud.report import report_crud
+from crud.report_settings import report_settings_crud
 from services.google_api_service import (get_data_for_shedule,
                                          get_one_spreadsheet, get_report)
 from services.sheduling import build_shedule
@@ -186,11 +187,11 @@ async def choise_channel(client, message):
     return False
 
 
-async def set_settings_for_analitics(client, message, settings):
+async def set_settings_for_analitics(client, message, settings, crud_name):
     await client.send_message(
         message.chat.id, '...Сохраняем настройки...'
     )
-    print(await set_settings_for_report(settings))
+    print(await set_settings_for_report(settings, crud_name=crud_name))
 
 
 async def auto_generate_report(client, message, bot_1):
@@ -205,7 +206,8 @@ async def auto_generate_report(client, message, bot_1):
 
 
 async def get_channel_report(client, message):
-    """Получение каналов из сохраненных в таблице репорт."""
+    """Получение каналов из сохраненных в таблице репорт, собранных ботом 1."""
+
     async with engine.connect() as session:
         db = await report_crud.get_all(session)
         if db is not None and db:
@@ -225,52 +227,52 @@ async def get_channel_report(client, message):
             return db
         else:
             logger.error('У пользователя нет каналов сохранённых '
-                         'в Spreadgheets Google.')
+                         'в Spreadsheets Google.')
             await client.send_message(
                 message.chat.id,
                 'У вас нет информации о каналах сохранённой '
-                'в Spreadgheets Google.'
+                'в Spreadsheets Google.'
             )
 
 
 async def generate_report(client, message, manager):
     """Формирование отчёта для отправки в Телеграм."""
 
-    logger.info(f'Готовим ваш {message.text} файл для отправки в Телеграм.')
+    logger.info(f'Готовим ваш {manager.format} файл для отправки в Телеграм.')
     for report in manager.db:
         if report.group == manager.channel:
             await client.send_message(
                 message.chat.id,
                 f'Пожалуйста подождите, ваш файл: {report.group}'
-                f'.{message.text} загружается из пространства Google Drive...',
+                f'.{manager.format} загружается из пространства Google Drive...',
                 reply_markup=ReplyKeyboardRemove()
                 )
             await get_one_spreadsheet(
                 report.sheet_id,
                 f'{Config.PATH_TO_DOWNLOADS}{report.group}',
-                format=message.text
+                format=manager.format
                 )
             if os.path.exists(
-                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{message.text}'
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{manager.format}'
                     ):
                 await client.send_message(
                     message.chat.id,
                     f'Пожалуйста подождите, ваш файл: {report.group}'
-                    f'.{message.text} загружается в Телеграм...'
+                    f'.{manager.format} загружается в Телеграм...'
                 )
                 await client.send_document(
                     message.chat.id,
-                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{message.text}'
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{manager.format}'
                     )
                 logger.info(
-                    f'Файл {report.group}.{message.text} успешно отправлен '
+                    f'Файл {report.group}.{manager.format} успешно отправлен '
                     'в Телеграм.'
                     )
                 break
             else:
                 logger.error(
                     f'При скачивании файла: {report.group}.'
-                    f'{message.text} с Google Drive чтото пошло не так!')
+                    f'{manager.format} с Google Drive чтото пошло не так!')
 
 
 async def auto_report(client, message):
@@ -294,10 +296,10 @@ async def scheduling(client, message, spreadsheetId):
     )
 
 
-async def get_channels_from_db():
+async def get_channels_settings_from_db(crud_name):
     async with engine.connect() as session:
         channel_btns = []
-        for channel in await channel_settings_crud.get_all(session):
+        for channel in await crud_name.get_all(session):
             channel_btns.append(channel.channel_name)
         return channel_btns
 
@@ -321,7 +323,6 @@ async def set_channel_data(channel, period=None):
             }
         else:
             obj = {
-                'run_status': False,
                 'run': False
             }
         channel = await channel_settings_crud.set_update(

@@ -1,24 +1,26 @@
-from asyncio import sleep
 import datetime
 import re
+from asyncio import sleep
 from enum import Enum
-from sqlalchemy.exc import IntegrityError
+
 from pyrogram import Client, filters
 from pyrogram.errors.exceptions.bad_request_400 import (UsernameNotOccupied,
                                                         UserNotParticipant)
 from pyrogram.types import ReplyKeyboardRemove, messages_and_media
+from sqlalchemy.exc import IntegrityError
 
-from assistants.assistants import dinamic_keyboard, DotNotationDict
+from assistants.assistants import DotNotationDict, dinamic_keyboard
 from buttons import bot_keys
-from logic import (add_admin, choise_channel, del_admin, set_channel_data,
-                   set_settings_for_analitics,
-                   get_channels_from_db, get_run_status)
+from crud.channel_settings import channel_settings_crud
+from crud.report_settings import report_settings_crud
+from logic import (add_admin, choise_channel, del_admin,
+                   get_channels_settings_from_db, get_run_status,
+                   set_channel_data, set_settings_for_analitics)
 from permissions.permissions import check_authorization
 from services.google_api_service import get_report
-from services.telegram_service import (ChatUserInfo, get_settings_from_report,
-                                       delete_settings_report)
+from services.telegram_service import (ChatUserInfo, delete_settings_report,
+                                       get_settings_from_report)
 from settings import Config, configure_logging
-
 
 logger = configure_logging()
 
@@ -166,10 +168,14 @@ async def generate_report(
             'period': manager.period,
             'work_period': datetime.datetime.now() + datetime.timedelta(seconds=manager.work_period),
             'started_at': datetime.datetime.now(),
-            'run_status': True,
             'run': True
         }
-        await set_settings_for_analitics(client, message, settings)
+        await set_settings_for_analitics(
+            client,
+            message,
+            settings,
+            crud_name=channel_settings_crud
+            )
     except IntegrityError:
         logger.info(
             'Процесс сбора аналитики в этом канале уже запущен!\n'
@@ -195,7 +201,7 @@ async def generate_report(
         logger.info('Рекурсия началась')
 
         chat = ChatUserInfo(bot_1, channel_name)
-        logger.info('Бот начал работу')
+        logger.info('Бот собирает аналитику')
         report = await chat.create_report()
         reports_url = await get_report(report)
         for msg in reports_url:
@@ -204,11 +210,14 @@ async def generate_report(
                 msg
             )
 
-        logger.info(f'Рекурсия, контрольная точка: {datetime.datetime.now()}')
+        logger.info(
+            f'Рекурсия, контрольная точка: {datetime.datetime.now()}\n'
+            'Бот собрал аналитику в текущем цикле итерации.')
         db = await get_settings_from_report(
                 {
                     'usertg_id': usertg_id,
-                    'channel_name': channel_name
+                    'channel_name': channel_name,
+                    'crud_name': channel_settings_crud
                 })
         if db is not None or db:
             # await custom_sleep(channel_name, period)
@@ -216,7 +225,11 @@ async def generate_report(
             if (not db.run or db.work_period <= datetime.datetime.now()):
                 logger.info(f'Удаляем запись о канале: {db.channel_name} '
                             'в базе данных, Бот закончил свою работу.')
-                await delete_settings_report('id', db.id)
+                await delete_settings_report(
+                    'id',
+                    db.id,
+                    crud_name=channel_settings_crud
+                    )
                 return
             await recursion_func(db.usertg_id, db.channel_name, db.period)
 
@@ -288,7 +301,9 @@ async def stop_channel(
     """Функция для остановки запущенных процессов сбора аналитики в каналах."""
     logger.info('Запущен процесс остановки сбора аналитики канала')
     channel_btns = []
-    channels = get_channels_from_db()
+    channels = await get_channels_settings_from_db(
+        crud_name=channel_settings_crud
+        )
 
     if not channels:
         await client.send_message(
@@ -302,17 +317,18 @@ async def stop_channel(
                 attr_name='key_name'
             )
         )
-    for channel in await channels:
-        channel_btns.append(DotNotationDict({'channel': channel}))
-    await client.send_message(
-        message.chat.id,
-        'Выберите канал для остановки сбора аналитики:',
-        reply_markup=dinamic_keyboard(
-            objs=channel_btns,
-            attr_name='channel'
+    else:
+        for channel in channels:
+            channel_btns.append(DotNotationDict({'channel': channel}))
+        await client.send_message(
+            message.chat.id,
+            'Выберите канал для остановки сбора аналитики:',
+            reply_markup=dinamic_keyboard(
+                objs=channel_btns,
+                attr_name='channel'
+            )
         )
-    )
-    manager.stop_channel_flag = True
+        manager.stop_channel_flag = True
 
 
 @bot_1.on_message()
@@ -398,7 +414,11 @@ async def all_incomming_messages(
         channel = message.text
         await set_channel_data(channel)
         logger.info(f'Сбор канала {channel} остановлен')
-        await delete_settings_report('channel_name', channel)
+        await delete_settings_report(
+            'channel_name',
+            channel,
+            crud_name=channel_settings_crud
+            )
         await client.send_message(
             message.chat.id,
             f'Остановлен сбор аналитики канала {channel}',
@@ -410,7 +430,7 @@ async def all_incomming_messages(
                 attr_name='key_name'
             )
         )
-        manager.stop_channel_flag = True
+        manager.stop_channel_flag = False
     else:
         await client.send_message(
             message.chat.id,

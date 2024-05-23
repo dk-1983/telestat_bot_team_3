@@ -6,8 +6,11 @@ from sqlalchemy import (BigInteger, Boolean, CheckConstraint, Column, DateTime,
 from core.db import Base
 
 
-class ChannelSettings(Base):
-    """Модель настроек пользователя для каналов."""
+class ReportSettings(Base):
+    """
+    Модель настроек пользователя для каналов используется для отправки отчётов
+    в Телеграм.
+    """
 
     usertg_id = Column(
         BigInteger,

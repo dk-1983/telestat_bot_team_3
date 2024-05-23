@@ -3,7 +3,6 @@ from pyrogram import Client, enums
 from assistants.assistants import check_by_attr, get_user_session, user_bot
 from core.db import async_session, engine
 from crud.userstg import userstg_crud
-from crud.channel_settings import channel_settings_crud
 from permissions.permissions import check_authorization
 from settings import configure_logging
 
@@ -246,7 +245,8 @@ async def del_users():
 
 
 async def set_settings_for_report(
-    settings: dict
+    settings: dict,
+    crud_name
 ):
     """
     Сохраняет установленные настройки для формирования отчёта
@@ -257,7 +257,7 @@ async def set_settings_for_report(
 
     async with async_session() as session:
         async with engine.connect():
-            return await channel_settings_crud.create(settings, session)
+            return await crud_name.create(settings, session)
 
 
 async def get_settings_from_report(
@@ -269,14 +269,15 @@ async def get_settings_from_report(
         return False
 
     async with engine.connect() as session:
-        return (await channel_settings_crud.get_settings_report(
+        return (await (settings['crud_name']).get_settings_report(
             settings,
             session))
 
 
 async def delete_settings_report(
         attr_name,
-        attr_value
+        attr_value,
+        crud_name
 ):
     """Удаление записи из базы данных по окончании рекурсии."""
 
@@ -285,7 +286,7 @@ async def delete_settings_report(
 
     async with async_session() as session:
         async with engine.connect():
-            return (await channel_settings_crud.remove(
+            return (await crud_name.remove(
                 attr_name,
                 attr_value,
                 session))

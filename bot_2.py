@@ -1,25 +1,37 @@
+import datetime
 import os
 import re
+from asyncio import sleep
 from enum import Enum
 
 from pyrogram import Client, filters
 from pyrogram.types import ReplyKeyboardRemove, messages_and_media
+from sqlalchemy.exc import IntegrityError
 
-from assistants.assistants import dinamic_keyboard
+from assistants.assistants import DotNotationDict, dinamic_keyboard
 from buttons import bot_keys
+from crud.channel_settings import channel_settings_crud
+from crud.report_settings import report_settings_crud
 from logic import (add_admin, auto_report, del_admin, generate_report,
-                   get_channel_report, scheduling)
+                   get_channel_report, get_channels_settings_from_db,
+                   scheduling, set_channel_data, set_settings_for_analitics)
 from permissions.permissions import check_authorization
 from services.google_api_service import get_one_spreadsheet, get_report
+from services.telegram_service import (delete_settings_report,
+                                       get_settings_from_report)
 from settings import Config, configure_logging
 
 
 class Commands(Enum):
     add_admin = 'Добавить администратора'
     del_admin = 'Удалить администратора'
+    set_period = 'Установить период сбора данных'
     auto_report = 'Автоматическое формирование отчёта'
+    run_collect_analitics = 'Начать сбор аналитики'
     generate_report = 'Формирование отчёта'
     scheduling = 'Формирование графика'
+    user_period = 'Свой вариант'
+    stop_channel = 'Остановить сбор аналитики'
 
 
 logger = configure_logging()
@@ -37,8 +49,13 @@ class BotManager:
     del_admin_flag = False
     choise_report_flag = False
     choise_auto_report_flag = False
+    auto_report_status_flag = False
+    set_period_flag = False
+    set_user_period_flag = False
     scheduling_flag = False
+    stop_channel_flag = False
     owner_or_admin = ''
+    format = ''
     channel = ''
     link = ''
     db = []
@@ -64,7 +81,7 @@ async def command_start(
             message.chat.id,
             f'{message.chat.username} вы авторизованы как владелец!',
             reply_markup=dinamic_keyboard(
-                objs=bot_keys[:2] + bot_keys[5:8],
+                objs=bot_keys[:2] + bot_keys[5:8] + bot_keys[14:15],
                 attr_name='key_name',
                 keyboard_row=2
             )
@@ -76,7 +93,7 @@ async def command_start(
             message.chat.id,
             f'{message.chat.username} вы авторизованы как администратор бота!',
             reply_markup=dinamic_keyboard(
-                objs=bot_keys[5:8],
+                objs=bot_keys[5:8] + bot_keys[14:15],
                 attr_name='key_name',
                 keyboard_row=2
             )
@@ -132,6 +149,133 @@ async def command_del_admin(
         manager.del_admin_flag = True
 
 
+@bot_2.on_message(filters.regex(Commands.run_collect_analitics.value))
+async def command_run_collect_analitics(
+    client: Client,
+    message: messages_and_media.message.Message,
+    manager=manager
+):
+    """Отправляет отчёт пользователю Телеграм автоматически."""
+
+    logger.info('Начат процесс отправки собраной информации в Телеграм.')
+    if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
+        try:
+            if not manager.channel:
+                return
+
+            settings = {
+                'usertg_id': (await client.get_users(message.from_user.username)).id,
+                'channel_name': manager.channel,
+                'period': manager.period,
+                'work_period': datetime.datetime.now() + datetime.timedelta(seconds=manager.work_period),
+                'started_at': datetime.datetime.now(),
+                'run': True
+            }
+            await set_settings_for_analitics(
+                client,
+                message,
+                settings,
+                crud_name=report_settings_crud
+                )
+        except IntegrityError:
+            logger.info(
+                'Процесс передачи аналитики в этом канале для Телеграм уже запущен!\n'
+                f'Обновляем период сбора аналитики в канале {manager.channel} '
+                f'на {manager.period}'
+            )
+            await set_channel_data(manager.channel, manager.period)
+
+        period = manager.period
+        usertg_id = (await client.get_users(message.from_user.username)).id
+        channel_name = manager.channel
+
+        await client.send_message(
+            message.chat.id,
+            f'Бот выполняет сбор аналитики на канале: {channel_name} '
+            'из Google Spreadsheets для передачи файлов в Телеграм, '
+            f'с заданым периодом {period}. Желаете запустить другой '
+            'канал? Выполните команду старт: /start',
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+        async def recursion_func(usertg_id, channel_name, period):
+            logger.info('Рекурсия началась')
+
+            logger.info('ПОЛЕЗНАЯ НАГРУЗКА!!!')
+            print(manager.format, manager.channel, manager.period)
+            await generate_report(
+                    client,
+                    message,
+                    manager=manager
+                    )
+
+            logger.info(
+                f'Рекурсия, контрольная точка: {datetime.datetime.now()}\n'
+                'Бот собрал аналитику в текущем цикле итерации.')
+
+            db = await get_settings_from_report(
+                    {
+                        'usertg_id': usertg_id,
+                        'channel_name': channel_name,
+                        'crud_name': report_settings_crud
+                    })
+            if db is not None or db:
+                # await custom_sleep(channel_name, period)
+                await sleep(period)
+                if (not db.run or db.work_period <= datetime.datetime.now()):
+                    logger.info(f'Удаляем запись о канале: {db.channel_name} '
+                                'в базе данных, Бот закончил свою работу.')
+                    await delete_settings_report(
+                        'id',
+                        db.id,
+                        crud_name=report_settings_crud
+                        )
+                    return
+                await recursion_func(db.usertg_id, db.channel_name, db.period)
+
+        await recursion_func(usertg_id, channel_name, period)
+
+
+@bot_2.on_message(filters.regex(Commands.stop_channel.value))
+async def stop_channel(
+    client: Client,
+    message: messages_and_media.message.Message,
+    manager=manager
+):
+    """Функция для остановки запущенных процессов сбора аналитики в каналах."""
+
+    logger.info('Запущен процесс остановки сбора аналитики канала')
+    channel_btns = []
+    channels = await get_channels_settings_from_db(
+        crud_name=report_settings_crud
+    )
+
+    if not channels:
+        await client.send_message(
+            message.chat.id,
+            'Нет запущеных задач по сбору и передаче аналитики в Телеграм!',
+            reply_markup=dinamic_keyboard(
+                objs=(
+                    bot_keys[5:8],
+                    bot_keys[:2] + bot_keys[5:8]
+                )[manager.owner_or_admin == 'owner'],
+                attr_name='key_name'
+            )
+        )
+    else:
+        for channel in channels:
+            channel_btns.append(DotNotationDict({'channel': channel}))
+        await client.send_message(
+            message.chat.id,
+            'Выберите канал для остановки сбора аналитики:',
+            reply_markup=dinamic_keyboard(
+                objs=channel_btns,
+                attr_name='channel'
+            )
+        )
+        manager.stop_channel_flag = True
+
+
 @bot_2.on_message(filters.regex(Commands.generate_report.value))
 async def command_generate_report(
     client: Client,
@@ -155,8 +299,47 @@ async def command_auto_report(
     """Создаёт отчёт автоматически."""
 
     if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
-        await auto_report(client, message)
+        manager.db = await get_channel_report(client, message)
         manager.choise_auto_report_flag = True
+
+
+@bot_2.on_message(filters.regex(Commands.set_period.value))
+async def command_set_period_cmd(
+    client: Client,
+    message: messages_and_media.message.Message,
+    manager=manager
+):
+    """Устанавливает переиод сбора данных."""
+
+    logger.info('Устананавливаем период сбора данных')
+    if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
+        await client.send_message(
+            message.chat.id,
+            'Установите период опроса списка пользователей группы:',
+            reply_markup=dinamic_keyboard(
+                objs=bot_keys[8:14],
+                attr_name='key_name',
+                keyboard_row=2
+            )
+        )
+        manager.set_period_flag = True
+
+
+@bot_2.on_message(filters.regex(Commands.user_period.value))
+async def command_set_user_period(
+    client: Client,
+    message: messages_and_media.message.Message,
+    manager=manager
+):
+    """Устанавливает пользовательское время периода опроса."""
+
+    logger.info('Пользователь вручную выбирает время опроса')
+    if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
+        await client.send_message(
+            message.chat.id,
+            'Укажите произвольное время в часах:',
+            reply_markup=ReplyKeyboardRemove()
+        )
 
 
 @bot_2.on_message(filters.regex(Commands.scheduling.value))
@@ -168,7 +351,7 @@ async def command_sheduling(
     """Создаёт графики."""
 
     if manager.owner_or_admin == 'owner' or manager.owner_or_admin == 'admin':
-        await auto_report(client, message)
+        # await scheduling(client, message)
         manager.scheduling_flag = True
 
 
@@ -192,41 +375,140 @@ async def all_incomming_messages(
         logger.info('Приняли команду на формирование отчёта')
         if message.text:
             manager.channel = message.text
-        await client.send_message(
-            message.chat.id,
-            f'Вы выбрали канал: {message.text}\n'
-            'Выберете желаемый формат для сохранения файла на клавиатуре.',
-            reply_markup=dinamic_keyboard(
-                objs=bot_keys[15:17],
-                attr_name='key_name'
+            await client.send_message(
+                message.chat.id,
+                f'Вы выбрали канал: {message.text}\n'
+                'Выбирите желаемый формат для сохранения файла на клавиатуре.',
+                reply_markup=dinamic_keyboard(
+                    objs=bot_keys[15:17],
+                    attr_name='key_name'
+                )
             )
-        )
         manager.choise_report_flag = False
 
     elif message.text == 'csv':
         if (manager.owner_or_admin == 'owner' or
                 manager.owner_or_admin == 'admin'):
-            await generate_report(
-                client,
-                message,
-                manager=manager
+            manager.format = message.text
+            if manager.auto_report_status_flag:
+                manager.auto_report_status_flag = False
+                logger.info(f'Выбрали формат {message.text} для автоотчёта.')
+                await client.send_message(
+                    message.chat.id,
+                    'Выбирите желай интервал времени на клавиатуре:\n'
+                    'или начните отправку аналитики...',
+                    reply_markup=dinamic_keyboard(
+                        objs=bot_keys[3:4] + bot_keys[4:5],
+                        attr_name='key_name',
+                        keyboard_row=2
+                    )
                 )
+            else:
+                await generate_report(
+                    client,
+                    message,
+                    manager=manager
+                    )
 
     elif message.text == 'xlsx':
         if (manager.owner_or_admin == 'owner' or
                 manager.owner_or_admin == 'admin'):
-            await generate_report(
-                client,
-                message,
-                manager=manager
+            manager.format = message.text
+            if manager.auto_report_status_flag:
+                manager.auto_report_status_flag = False
+                logger.info(f'Выбрали формат {message.text} для автоотчёта.')
+                await client.send_message(
+                    message.chat.id,
+                    'Выбирите желай интервал времени на клавиатуре:\n'
+                    'или начните отправку аналитики...',
+                    reply_markup=dinamic_keyboard(
+                        objs=bot_keys[3:4] + bot_keys[4:5],
+                        attr_name='key_name',
+                        keyboard_row=2
+                    )
                 )
+            else:
+                await generate_report(
+                    client,
+                    message,
+                    manager=manager
+                    )
+
+    elif manager.choise_report_flag:
+        logger.info('Приняли команду на установку периода отправки данных.')
+        print(message.text)
+        manager.choise_report_flag = False
 
     elif manager.choise_auto_report_flag:
+        manager.auto_report_status_flag = True
         logger.info('Приняли команду на aвтоматическое формирование отчёта')
+        if message.text:
+            manager.channel = message.text
+            await client.send_message(
+                message.chat.id,
+                'Выбирите желай формат отправляемых данных на клавиатуре:\n'
+                'и начните отправку аналитики...',
+                reply_markup=dinamic_keyboard(
+                    objs=bot_keys[15:17],
+                    attr_name='key_name',
+                    keyboard_row=2
+                )
+            )
         manager.choise_auto_report_flag = False
+
     elif manager.scheduling_flag:
         logger.info('Приняли команду на создание графика.')
         manager.scheduling_flag = False
+
+    elif manager.set_period_flag:
+        logger.info(
+            'Приняли команду на установку временного периода из списка '
+            'или заданное пользователем.'
+            )
+        period = re.search('\d{,3}', message.text).group()
+        if not period:
+            await client.send_message(
+                message.chat.id,
+                'Проверьте правильность периода, должно быть целое число!\n'
+                'Укажите произвольное время в часах:',
+                reply_markup=ReplyKeyboardRemove()
+            )
+            return
+        await client.send_message(
+            message.chat.id,
+            'Для запуска отправки статистики нажмите кнопку.',
+            reply_markup=dinamic_keyboard(
+                objs=[bot_keys[4]],
+                attr_name='key_name',
+                keyboard_row=2
+            )
+        )
+        manager.period = int(period) * 3600
+        logger.info(f'Выбран период опроса {manager.period}')
+        manager.set_period_flag = False
+
+    elif manager.stop_channel_flag:
+        channel = message.text
+        await set_channel_data(channel)
+        logger.info(f'Сбор канала {channel} остановлен')
+        await delete_settings_report(
+            'channel_name',
+            channel,
+            crud_name=report_settings_crud
+            )
+        await client.send_message(
+            message.chat.id,
+            f'Остановлен сбор аналитики канала {channel}',
+            reply_markup=dinamic_keyboard(
+                objs=(
+                    [bot_keys[5:8] + bot_keys[14:15]],
+                    bot_keys[:2] + bot_keys[5:8] + bot_keys[14:15]
+                )[manager.owner_or_admin == 'owner'],
+                attr_name='key_name'
+            )
+        )
+        manager.stop_channel_flag = False
+
     else:
         await client.send_message(
             message.chat.id,

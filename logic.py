@@ -233,39 +233,40 @@ async def get_channel_report(client, message):
             )
 
 
-async def generate_report(client, message, manager, tag='xlsx'):
+async def generate_report(client, message, manager):
     """Формирование отчёта для отправки в Телеграм."""
 
-    logger.info(f'Готовим ваш {tag} файл для отправки в Телеграм.')
+    logger.info(f'Готовим ваш {message.text} файл для отправки в Телеграм.')
     for report in manager.db:
         if report.group == manager.channel:
             await client.send_message(
                 message.chat.id,
-                f'Пожалуйста подождите, ваш файл: {report.group}.{tag} '
-                'загружается из пространства Google Drive...',
+                f'Пожалуйста подождите, ваш файл: {report.group}'
+                f'.{message.text} загружается из пространства Google Drive...',
                 reply_markup=ReplyKeyboardRemove()
                 )
             await get_one_spreadsheet(
                 report.sheet_id,
                 f'{Config.PATH_TO_DOWNLOADS}{report.group}',
-                format=tag
+                format=message.text
                 )
             if os.path.exists(
-                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{tag}'
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{message.text}'
                     ):
                 await client.send_message(
                     message.chat.id,
                     f'Пожалуйста подождите, ваш файл: {report.group}'
-                    f'.{tag} загружается в Телеграм...'
+                    f'.{message.text} загружается в Телеграм...'
                 )
                 await client.send_document(
                     message.chat.id,
-                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{tag}'
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{message.text}'
                     )
                 break
             else:
-                logger.error(f'При скачивании файла: {report.group}.'
-                             f'{tag} с Google Drive чтото пошло не так!')
+                logger.error(
+                    f'При скачивании файла: {report.group}.'
+                    f'{message.text} с Google Drive чтото пошло не так!')
 
 
 async def auto_report(client, message):

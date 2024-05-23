@@ -185,7 +185,11 @@ async def command_run_collect_analitics(
                 f'Обновляем период сбора аналитики в канале {manager.channel} '
                 f'на {manager.period}'
             )
-            await set_channel_data(manager.channel, manager.period)
+            await set_channel_data(
+                channel=manager.channel,
+                period=manager.period,
+                crud_name=report_settings_crud
+                )
 
         period = manager.period
         usertg_id = (await client.get_users(message.from_user.username)).id
@@ -589,7 +593,10 @@ async def all_incomming_messages(
 
     elif manager.stop_channel_flag:
         channel = message.text
-        await set_channel_data(channel)
+        await set_channel_data(
+            channel=channel,
+            crud_name=report_settings_crud
+            )
         logger.info(f'Сбор канала {channel} остановлен')
         await delete_settings_report(
             'channel_name',

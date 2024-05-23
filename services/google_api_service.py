@@ -297,7 +297,7 @@ async def get_one_spreadsheet(
         )
         xlsx = load_workbook(filename=BytesIO(file))
         xlsx.save(f'{path}.xlsx')
-        if format == 'CSV':
+        if format == 'csv':
             df = pd.DataFrame(pd.read_excel(f'{path}.xlsx'))
             df.to_csv(f'{path}.csv')
         return file

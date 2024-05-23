@@ -1,3 +1,4 @@
+import os
 from typing import Literal
 
 from pyrogram.errors.exceptions.bad_request_400 import (ChatAdminRequired,
@@ -5,14 +6,15 @@ from pyrogram.errors.exceptions.bad_request_400 import (ChatAdminRequired,
                                                         UsernameNotOccupied,
                                                         UserNotParticipant)
 from pyrogram.errors.exceptions.flood_420 import FloodWait
-from sqlalchemy.exc import IntegrityError
+from pyrogram.types import ReplyKeyboardRemove
 
 from assistants.assistants import dinamic_keyboard
 from buttons import bot_keys
 from core.db import engine
 from crud.channel_settings import channel_settings_crud
 from crud.report import report_crud
-from services.google_api_service import get_data_for_shedule, get_report
+from services.google_api_service import (get_data_for_shedule,
+                                         get_one_spreadsheet, get_report)
 from services.sheduling import build_shedule
 from services.telegram_service import (ChatUserInfo, add_users, get_channels,
                                        set_settings_for_report, update_users)
@@ -231,8 +233,39 @@ async def get_channel_report(client, message):
             )
 
 
-async def generate_report(client, message):
-    await client.send_message(message.chat.id, '...Формирование отчёта...')
+async def generate_report(client, message, manager, tag='xlsx'):
+    """Формирование отчёта для отправки в Телеграм."""
+
+    logger.info(f'Готовим ваш {tag} файл для отправки в Телеграм.')
+    for report in manager.db:
+        if report.group == manager.channel:
+            await client.send_message(
+                message.chat.id,
+                f'Пожалуйста подождите, ваш файл: {report.group}.{tag} '
+                'загружается из пространства Google Drive...',
+                reply_markup=ReplyKeyboardRemove()
+                )
+            await get_one_spreadsheet(
+                report.sheet_id,
+                f'{Config.PATH_TO_DOWNLOADS}{report.group}',
+                format=tag
+                )
+            if os.path.exists(
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{tag}'
+                    ):
+                await client.send_message(
+                    message.chat.id,
+                    f'Пожалуйста подождите, ваш файл: {report.group}'
+                    f'.{tag} загружается в Телеграм...'
+                )
+                await client.send_document(
+                    message.chat.id,
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{tag}'
+                    )
+                break
+            else:
+                logger.error(f'При скачивании файла: {report.group}.'
+                             f'{tag} с Google Drive чтото пошло не так!')
 
 
 async def auto_report(client, message):

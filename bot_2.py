@@ -389,23 +389,6 @@ async def command_set_user_period(
         )
 
 
-@bot_2.on_message(filters.regex(Commands.set_new_period.value))
-async def command_set_new_period(
-    client: Client,
-    message: messages_and_media.message.Message,
-    manager=manager
-):
-    """Изменение периода сбора данных в процессе работы бота."""
-
-    await client.send_message(
-        message.chat.id,
-        'Установите новый период в часах, введите новое значение в '
-        'текстовое поле:',
-        reply_markup=ReplyKeyboardRemove()
-    )
-    manager.set_new_period_flag = True
-
-
 @bot_2.on_message(filters.regex(Commands.scheduling.value))
 async def command_sheduling(
     client: Client,
@@ -590,7 +573,8 @@ async def all_incomming_messages(
         else:
             await set_channel_data(
                 channel=message.text,
-                period=manager.period
+                period=manager.period,
+                crud_name=report_settings_crud
             )
 
             await client.send_message(

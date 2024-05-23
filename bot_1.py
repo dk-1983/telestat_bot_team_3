@@ -465,7 +465,8 @@ async def all_incomming_messages(
         else:
             await set_channel_data(
                 channel=message.text,
-                period=manager.period
+                period=manager.period,
+                crud_name=channel_settings_crud
             )
 
             await client.send_message(

@@ -48,8 +48,8 @@ class BotManager:
     set_channel_for_new_period = False
     owner_or_admin = ''
     chanel = ''
-    period = 120
-    work_period = 240
+    period = 60
+    work_period = 120
 
 
 bot_1 = Client(
@@ -213,9 +213,13 @@ async def generate_report(
                     'crud_name': channel_settings_crud
                 })
         if db is not None or db:
-            await custom_sleep(db.channel_name, db.period)
+            await custom_sleep(
+                db.channel_name,
+                db.period,
+                crud_name=channel_settings_crud
+                )
             # await sleep(period)
-            if (not db.run or db.work_period <= datetime.datetime.now()):
+            if (not db.run):  # or db.work_period <= datetime.datetime.now()
                 logger.info(f'Удаляем запись о канале: {db.channel_name} '
                             'в базе данных, Бот 1 закончил свою работу.')
                 await client.send_message(

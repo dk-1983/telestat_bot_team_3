@@ -63,7 +63,7 @@ class BotManager:
     channel = ''
     link = ''
     db = []
-    period = 10
+    period = 30
     work_period = 60
 
 
@@ -205,8 +205,8 @@ async def command_run_collect_analitics(
         async def recursion_func(usertg_id, channel_name, period):
             logger.info('Рекурсия началась')
 
-            logger.info('ПОЛЕЗНАЯ НАГРУЗКА!!!')
-            print(manager.format, manager.channel, manager.period)
+            # logger.info('ПОЛЕЗНАЯ НАГРУЗКА!!!')
+            # print(manager.format, manager.channel, manager.period)
             await generate_report(
                     client,
                     message,
@@ -242,9 +242,13 @@ async def command_run_collect_analitics(
                     f'больше не собирает статистику на канале {db.channel_name}!'
                 )
             if db is not None or db:
-                await custom_sleep(db.channel_name, db.period)
+                await custom_sleep(
+                    db.channel_name,
+                    db.period,
+                    crud_name=report_settings_crud
+                    )
                 # await sleep(period)
-                if (not db.run or db.work_period <= datetime.datetime.now() or
+                if (not db.run or  # or db.work_period <= datetime.datetime.now()
                         db is not None or db_bot1.run):
                     logger.info(f'Удаляем запись о канале: {db.channel_name} '
                                 'в базе данных, Бот 2 закончил свою работу.')

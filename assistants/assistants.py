@@ -1,10 +1,12 @@
+import datetime
 from functools import wraps
 
 from pyrogram import Client
-from pyrogram.types import KeyboardButton, ReplyKeyboardMarkup
 from pyrogram.errors.exceptions.bad_request_400 import ReplyMarkupInvalid
+from pyrogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 from crud.userstg import userstg_crud
+from logic import get_run_status
 from settings import Config, logger
 
 user_bot = Client(
@@ -37,7 +39,7 @@ async def check_by_attr(attr_name, attr_value, session) -> bool:
     return True
 
 
-async def custom_sleep(channel, period):
+async def custom_sleep(channel, period, crud_name):
     """
     Вручную меняет время паузы в случае ошибки пользователя при вводе данных
     периода между опросами иначе бот может на месяцы уйти в сон.
@@ -46,7 +48,7 @@ async def custom_sleep(channel, period):
     while (time_next > datetime.datetime.now()):
         channel = await get_run_status(
             channel,
-            crud_name=channel_settings_crud
+            crud_name=crud_name
             )
         if channel.run is not None or channel.run:
             await sleep(60)

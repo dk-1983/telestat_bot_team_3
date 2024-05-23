@@ -218,11 +218,30 @@ async def command_run_collect_analitics(
                         'usertg_id': usertg_id,
                         'channel_name': channel_name,
                         'crud_name': report_settings_crud
-                    })
+                    }
+                )
+            db_bot1 = await get_settings_from_report(
+                    {
+                        'usertg_id': usertg_id,
+                        'channel_name': channel_name,
+                        'crud_name': channel_settings_crud
+                    }
+                )
+            if db_bot1 is None or not db_bot1.run:
+                logger.info(
+                    'Дальнейший сбор аналитики не имеет смысла, Бот 1 '
+                    'больше не собирает статистику!'
+                    )
+                await client.send_message(
+                    message.chat.id,
+                    'Дальнейший сбор аналитики не имеет смысла, Бот 1 '
+                    f'больше не собирает статистику на канале {db.channel_name}!'
+                )
             if db is not None or db:
                 # await custom_sleep(channel_name, period)
                 await sleep(period)
-                if (not db.run or db.work_period <= datetime.datetime.now()):
+                if (not db.run or db.work_period <= datetime.datetime.now() or
+                        db is not None or db_bot1.run):
                     logger.info(f'Удаляем запись о канале: {db.channel_name} '
                                 'в базе данных, Бот закончил свою работу.')
                     await delete_settings_report(

@@ -47,7 +47,7 @@ class BotManager:
     set_channel_for_new_period = False
     owner_or_admin = ''
     chanel = ''
-    period = 60
+    period = 3600
     work_period = 120
 
 
@@ -339,15 +339,15 @@ async def stop_channel(
             )
         )
     else:
-        for channel in channels:
-            await client.send_message(
-                message.chat.id,
-                'Выберите канал для остановки сбора аналитики:',
-                reply_markup=dinamic_keyboard(
-                    objs=([channel], channel)[isinstance(channel, list)],
-                    attr_name='channel_name'
-                )
+        # for channel in channels:
+        await client.send_message(
+            message.chat.id,
+            'Выберите канал для остановки сбора аналитики:',
+            reply_markup=dinamic_keyboard(
+                objs=([channels], channels)[isinstance(channels, list)],
+                attr_name='channel_name'
             )
+        )
         manager.stop_channel_flag = True
 
 

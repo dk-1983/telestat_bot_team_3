@@ -308,7 +308,10 @@ async def get_channels_settings_from_db(crud_name):
         return await crud_name.get_all(session)
 
 
-async def get_run_status(channel, crud_name):
+async def get_run_status(
+        channel,
+        crud_name
+        ):
     async with engine.connect() as session:
         obj_channel = await crud_name.get_by_attr(
             attr_name='channel_name',
@@ -318,7 +321,12 @@ async def get_run_status(channel, crud_name):
         return obj_channel
 
 
-async def set_channel_data(*, channel, period=None, crud_name):
+async def set_channel_data(
+        *,
+        channel,
+        period=None,
+        crud_name
+        ):
     async with engine.connect() as session:
         if period is not None:
             obj = {

@@ -245,8 +245,8 @@ async def command_run_collect_analitics(
                 )
             if db is not None or db:
                 await custom_sleep(
-                    db.channel_name,
-                    db.period,
+                    channel=channel_name,
+                    period=period,
                     crud_name=report_settings_crud
                     )
                 # await sleep(period)
@@ -265,9 +265,17 @@ async def command_run_collect_analitics(
                         crud_name=report_settings_crud
                         )
                     return
-                await recursion_func(db.usertg_id, db.channel_name, db.period)
+                await recursion_func(
+                    usertg_id=db.usertg_id,
+                    channel_name=db.channel_name,
+                    period=db.period
+                    )
 
-        await recursion_func(usertg_id, channel_name, period)
+        await recursion_func(
+            usertg_id=usertg_id,
+            channel_name=channel_name,
+            period=period
+            )
 
 
 @bot_2.on_message(filters.regex(Commands.set_new_period.value))

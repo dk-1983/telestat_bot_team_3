@@ -181,14 +181,13 @@ async def generate_report(
             crud_name=channel_settings_crud
             )
 
-    period = manager.period
     usertg_id = (await client.get_users(message.from_user.username)).id
     channel_name = manager.chanel
 
     await client.send_message(
         message.chat.id,
         f'Бот выполняет сбор аналитики на канале: {channel_name} '
-        f'с заданым периодом {period}. Желаете запустить другой '
+        f'с заданым периодом {manager.period}. Желаете запустить другой '
         'канал? Выполните команду старт: /start',
         reply_markup=ReplyKeyboardRemove()
     )
@@ -217,8 +216,8 @@ async def generate_report(
                 })
         if db is not None or db:
             await custom_sleep(
-                db.channel_name,
-                db.period,
+                channel=channel_name,
+                period=period,
                 crud_name=channel_settings_crud
                 )
         # await sleep(period)
@@ -235,9 +234,17 @@ async def generate_report(
                 crud_name=channel_settings_crud
                 )
             return
-        await recursion_func(db.usertg_id, db.channel_name, db.period)
+        await recursion_func(
+            usertg_id=db.usertg_id,
+            channel_name=db.channel_name,
+            period=db.period
+            )
 
-    await recursion_func(usertg_id, channel_name, period)
+    await recursion_func(
+        usertg_id=usertg_id,
+        channel_name=channel_name,
+        period=manager.period
+        )
 
 
 @bot_1.on_message(filters.regex(Commands.choise_channel.value))

@@ -550,7 +550,7 @@ async def all_incomming_messages(
                     reply_markup=ReplyKeyboardRemove()
                 )
                 return
-            manager.period = int(period)  # * 3600
+            manager.period = int(period) * 3600
             logger.info(f'Выбран период опроса {manager.period}')
             channels = await get_channels_settings_from_db(
                 crud_name=report_settings_crud
@@ -583,8 +583,8 @@ async def all_incomming_messages(
                     message.chat.id,
                     'Установлен новый период выборки данных из канала '
                     f'{message.text} успешно, новый период составляет: '
-                    f'{manager.period} часов, для продолжения нажмите старт: '
-                    '/start',
+                    f'{manager.period / 3600} часов, для продолжения '
+                    'нажмите старт: /start',
                     reply_markup=ReplyKeyboardRemove()
                     )
             manager.set_new_period_flag = False

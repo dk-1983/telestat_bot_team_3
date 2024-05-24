@@ -407,7 +407,7 @@ async def all_incomming_messages(
         manager.choise_channel_flag = False
 
     elif manager.set_period_flag:
-        logger.info('Проверка и сохранение периода опроса в manager')
+        logger.info('Проверка и сохранение периода опроса set preriod')
         period = re.search('\d{,3}', message.text).group()
         if not period:
             await client.send_message(
@@ -474,8 +474,8 @@ async def all_incomming_messages(
                     message.chat.id,
                     'Установлен новый период выборки данных из канала '
                     f'{message.text} успешно, новый период составляет: '
-                    f'{manager.period} часов, для продолжения нажмите старт: '
-                    '/start',
+                    f'{manager.period / 3600} часов, для продолжения нажмите '
+                    'старт: /start',
                     reply_markup=ReplyKeyboardRemove()
                     )
             manager.set_new_period_flag = False

@@ -19,7 +19,7 @@ async def custom_sleep(
     time_next = datetime.datetime.now() + datetime.timedelta(seconds=period)
     while (time_next > datetime.datetime.now()):
         channel = await get_run_status(
-            channel,
+            channel=channel,
             crud_name=crud_name
             )
         logger.debug(

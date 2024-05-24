@@ -221,22 +221,21 @@ async def generate_report(
                 db.period,
                 crud_name=channel_settings_crud
                 )
-            # await sleep(period)
-            if (not db.run):  # or db.work_period <= datetime.datetime.now()
-                logger.info(f'Удаляем запись о канале: {db.channel_name} '
-                            'в базе данных, Бот 1 закончил свою работу.')
-                await client.send_message(
-                        message.chat.id,
-                        'Бот 1 закончил сбор аналитики на канале '
-                        f'{db.channel_name} в {datetime.datetime.now()}!'
-                    )
-                await delete_settings_report(
-                    'id',
-                    db.id,
-                    crud_name=channel_settings_crud
-                    )
-                return
-            await recursion_func(db.usertg_id, db.channel_name, db.period)
+        # await sleep(period)
+            logger.info(f'Удаляем запись о канале: {db.channel_name} '
+                        'в базе данных, Бот 1 закончил свою работу.')
+            await client.send_message(
+                    message.chat.id,
+                    'Бот 1 закончил сбор аналитики на канале '
+                    f'{db.channel_name} в {datetime.datetime.now()}!'
+                )
+            await delete_settings_report(
+                'id',
+                db.id,
+                crud_name=channel_settings_crud
+                )
+            return
+        await recursion_func(db.usertg_id, db.channel_name, db.period)
 
     await recursion_func(usertg_id, channel_name, period)
 
@@ -454,7 +453,6 @@ async def all_incomming_messages(
                     'Вероятно бот не запущен, данная операция недоступна.'
                 )
             else:
-                print(channels)
                 await client.send_message(
                     message.chat.id,
                     'Требуется выбрать канал для изменения временных критериев:',

@@ -320,7 +320,7 @@ async def get_run_status(channel, crud_name):
 
 async def set_channel_data(*, channel, period=None, crud_name):
     async with engine.connect() as session:
-        if period:
+        if period is not None:
             obj = {
                 'period': period
             }

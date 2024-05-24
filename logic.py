@@ -327,6 +327,7 @@ async def set_channel_data(
         period=None,
         crud_name
         ):
+    """Устанавливает данные канала."""
     async with engine.connect() as session:
         if period is not None:
             obj = {

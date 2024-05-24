@@ -268,7 +268,13 @@ async def generate_report(client, message, manager):
                     f'Файл {report.group}.{manager.format} успешно отправлен '
                     'в Телеграм.'
                     )
-                os.remove(f'{Config.PATH_TO_DOWNLOADS}{report.group}.{manager.format}')
+                os.remove(
+                    f'{Config.PATH_TO_DOWNLOADS}{report.group}.{manager.format}'
+                    )
+                if os.path.exists(
+                        f'{Config.PATH_TO_DOWNLOADS}{report.group}.xlsx'
+                        ):
+                    os.remove(f'{Config.PATH_TO_DOWNLOADS}{report.group}.xlsx')
                 break
             else:
                 logger.error(

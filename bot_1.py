@@ -321,8 +321,8 @@ async def stop_channel(
     manager=manager
 ):
     """Функция для остановки запущенных процессов сбора аналитики в каналах."""
+
     logger.info('Запущен процесс остановки сбора аналитики канала')
-    channel_btns = []
     channels = await get_channels_settings_from_db(
         crud_name=channel_settings_crud
         )

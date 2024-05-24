@@ -250,8 +250,8 @@ async def command_run_collect_analitics(
                     crud_name=report_settings_crud
                     )
                 # await sleep(period)
-                if (not db.run or  # or db.work_period <= datetime.datetime.now()
-                        db is not None or db_bot1.run):
+                if (db is None or  # or db.work_period <= datetime.datetime.now()
+                        not db.run or not db_bot1):
                     logger.info(f'Удаляем запись о канале: {db.channel_name} '
                                 'в базе данных, Бот 2 закончил свою работу.')
                     await client.send_message(

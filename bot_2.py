@@ -296,7 +296,6 @@ async def stop_channel(
     """Функция для остановки запущенных процессов сбора аналитики в каналах."""
 
     logger.info('Запущен процесс остановки сбора аналитики канала')
-    channel_btns = []
     channels = await get_channels_settings_from_db(
         crud_name=report_settings_crud
     )
@@ -315,15 +314,14 @@ async def stop_channel(
         )
     else:
         for channel in channels:
-            channel_btns.append(DotNotationDict({'channel': channel}))
-        await client.send_message(
-            message.chat.id,
-            'Выберите канал для остановки сбора аналитики:',
-            reply_markup=dinamic_keyboard(
-                objs=channel_btns,
-                attr_name='channel'
+            await client.send_message(
+                message.chat.id,
+                'Выберите канал для остановки сбора аналитики:',
+                reply_markup=dinamic_keyboard(
+                    objs=([channel], channel)[isinstance(channel, list)],
+                    attr_name='channel_name'
+                )
             )
-        )
         manager.stop_channel_flag = True
 
 

@@ -136,4 +136,9 @@ version_path_separator = os  # Use os.pathsep. Default configuration used for ne
 ```
 alembic revision --autogenerate -m "This Your're commit text."
 alembic upgrade head
+
 ```
+
+## Информация об авторе
+
+[Криволап Дмитрий Александрович](https://dk.4vrs.ru)
